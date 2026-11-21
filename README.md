@@ -9,9 +9,8 @@ Sections imposées du README :
 4. Validité.
 5. Coût de la campagne.
 -->
----
+
 # Rapport
----
 ## 1. Montage
 - Projet : tp1bigdata2026
 - Région : europe-west1
@@ -22,7 +21,7 @@ Sections imposées du README :
     - Une instance fixe (sans autoscaling) nommée fixed1, créée le 21/11 à 15h39m55s (2026-11-21T14:39:55+00:00)
     > l'URL : https://fixed1-dot-tp1bigdata2026.ew.r.appspot.com
 - Client : Locust 2.47.0, lancé depuis Cloud Shell
----
+
 ## 2. Résultats
 ### Partie 1 — Coût d’une requête  
 
@@ -52,15 +51,16 @@ Sections imposées du README :
 - Protocole :
     - Version fixed1 (1 instance fixe), 1 requête à la fois ("-u 1"), 45s par run, une run par jeu de données (26 runs : base, u100, u10000, p10/p100/p1000, f05 à f100). Les runs ont été lancés à la suite depuis Cloud Shell avec [`scripts/mesures_p1.sh`](scripts/mesures_p1.sh), les journaux bruts sont dans [`raw/`](raw/) (`p1_<jeu>.csv`). Les figures et leurs CSV sont générés par [`scripts/figures.py`](scripts/figures.py). Les 5 premières secondes de chaque run sont écartées (cold start) et 0 échec avec des HTTP 200.
 
-- Analyse des figures :
 ---
-![Fig. 1a : temps serveur médian selon U et P](figures/fig1a.png)
+- Analyse des figures :
 
-On remarque sur cette image que les facteurs U et P ont quelques millisecondes (1-2ms) de différence sur des jeux de données de 1 à 10 à 100 fois plus grands. Cette différence de quelques ms est probablement une marge d'erreur liée au bruit. 
+![Fig. 1a : temps serveur médian selon U et P](figures/fig1a.png)
+- On remarque sur cette image que les facteurs U et P ont quelques millisecondes (1-2ms) de différence sur des jeux de données de 1 à 10 à 100 fois plus grands. Cette différence de quelques ms est probablement une marge d'erreur liée au bruit. 
+
 ---
 ![Fig. 1b : temps serveur et latence client médians selon F](figures/fig1b.png)
+- De F = 5 à F = 25 le graphique semble constant puis on remarque sur la figure un point de bascule entre F = 25 et F = 30 suivi d'une montée quasi linéaire.
 
-De F = 5 à F = 25 le graphique semble constant puis on remarque sur la figure un point de bascule entre F = 25 et F = 30 suivi d'une montée quasi linéaire.
 ---
 - Vos hypothèses sont-elles confirmées ? Sinon, qu’aviez-vous manqué ?
     - U : Oui, l'écart d'environ 1-2ms est lié au bruit mais le temps est bien quasi constant avec le facteur U.
@@ -81,7 +81,7 @@ aeiouy des milliards de millions de feur
 
 ![Image des tarifications eur3](images/tarifs.png)
 
----
+
 ### Partie 2
 ### Partie 3
 
