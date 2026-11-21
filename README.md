@@ -52,7 +52,7 @@ Sections imposées du README :
     - Version fixed1 (1 instance fixe), 1 requête à la fois ("-u 1"), 45s par run, une run par jeu de données (26 runs : base, u100, u10000, p10/p100/p1000, f05 à f100). Les runs ont été lancés à la suite depuis Cloud Shell avec [`scripts/mesures_p1.sh`](scripts/mesures_p1.sh), les journaux bruts sont dans [`raw/`](raw/) (`p1_<jeu>.csv`). Les figures et leurs CSV sont générés par [`scripts/figures.py`](scripts/figures.py). Les 5 premières secondes de chaque run sont écartées (cold start) et 0 échec avec des HTTP 200.
 
 ---
-- Analyse des figures :
+### Analyse des figures :
 
 ![Fig. 1a : temps serveur médian selon U et P](figures/fig1a.png)
 - On remarque sur cette image que les facteurs U et P ont quelques millisecondes (1-2ms) de différence sur des jeux de données de 1 à 10 à 100 fois plus grands. Cette différence de quelques ms est probablement une marge d'erreur liée au bruit. 
@@ -76,10 +76,14 @@ Sections imposées du README :
 
 
 - Combien d’entités Datastore une timeline lit-elle, selon U, P et F ? Déduisez-en le coût de 1 million de timelines dans chaque cas (grille tarifaire de Datastore) :
+    - Cela dépend uniquement de F, pas de U ni P. On lit toujours 1 entité U (l'user qui consulte sa timeline) et au minimum 20 posts (en partant du principe que chaque auteur a au moins 20 posts), donc au minimum 1+20 = 21 entités.
+    - Avec 1 million de timelines par cas, on a :
+        - Pour un F ≤ 29 (avant le goulot d'étranglement) : 21*0,60 = 12,60$
+        - Une fois le goulot d'étranglement atteint (F ≥ 30) nous pouvons effectuer la formule : 1+20*(F+1) = nombre d'entités
+        - F = 30 : (1+20*(30+1))\*0,60 = 621\*0,60 = 372,60$
+        - F = 100 : (1+20*(100+1))\*0,60 = 2021\*0,60 = 1212,60$
 
-aeiouy des milliards de millions de feur
-
-![Image des tarifications eur3](images/tarifs.png)
+![Grille tarifaire du mode Datastore eur3](images/tarifs.png)
 
 
 ### Partie 2
