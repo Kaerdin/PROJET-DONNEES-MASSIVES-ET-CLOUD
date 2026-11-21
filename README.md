@@ -14,7 +14,7 @@ Sections imposées du README :
 ## 1. Montage
 - Projet : tp1bigdata2026
 - Région : europe-west1
-- Modalité de tarification : eur3
+- Emplacement de la base Datastore : eur3
 - Versions :
     - Par défaut une instance en autoscaling nommée 20261121t111034, créée le 21/11 à 12h12m38s (2026-11-21T11:12:38+00:00)  
     > l'URL https://tp1bigdata2026.ew.r.appspot.com <!-- J'ai repris la base du projet TP1 -->
@@ -71,12 +71,12 @@ Sections imposées du README :
         - Après F = 30 la montée est bien linéaire : le temps passe de 527ms (F = 30) à 1829ms (F = 100), soit environ 19ms de plus par compte suivi. Le F = 75 (1462ms) est plus grand que le F = 80 (1393ms), je ne pense pas que ça invalide l'hypothèse sur la linéarité après F = 30 mais qu'il s'agit de bruit induit par le protocole du 45s par run, l'échantillon possède environ 900 requêtes sur les F faibles et environ 25 pour les F élevés.
 
 - <ins>Quelle part de la latence client est due au réseau</ins> ?
-    - L'écart avec la latence client et celle du serveur ne bouge pas beaucoup, environ 13,5ms (entre 12,5ms et 15,8ms) pour tous les jeux de données, ça ne dépend donc pas de U, P ou F.
+    - L'écart avec la latence client et le temps serveur ne bouge pas beaucoup, environ 13,5ms (entre 12,5ms et 15,8ms) pour tous les jeux de données, ça ne dépend donc pas de U, P ou F.
     - Pour les timelines rapides F ≤ 25, environ 30 à 35% du temps se passe hors de `get_timeline`, ce qui inclut le réseau, tandis que pour les grosses timelines F = 100, ça représente moins d'1% du temps. Le réseau pèse donc beaucoup sur les petites requêtes, mais presque rien sur les grosses.
 
 
 - <ins>Combien d’entités Datastore une timeline lit-elle, selon U, P et F</ins> ? <ins>Déduisez-en le coût de 1 million de timelines dans chaque cas (grille tarifaire de Datastore)</ins> :
-    - Cela dépend uniquement de F, pas de U ni P. On lit toujours 1 entité U (l'user qui consulte sa timeline) et au minimum 20 posts (en partant du principe que chaque auteur a au moins 20 posts), donc au minimum 1+20 = 21 entités.
+    - Cela dépend uniquement de F, pas de U ni P. On lit toujours 1 entité User (l'user qui consulte sa timeline) et au minimum 20 posts (en partant du principe que chaque auteur a au moins 20 posts), donc au minimum 1+20 = 21 entités.
     - Avec 1 million de timelines par cas, on a :
         - Pour un F ≤ 29 (avant le goulot d'étranglement) : 21*0,60 = 12,60$
         - Une fois le goulot d'étranglement atteint (F ≥ 30) nous pouvons effectuer la formule : 1+20*(F+1) = nombre d'entités
