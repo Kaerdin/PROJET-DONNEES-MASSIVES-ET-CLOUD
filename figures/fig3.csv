@@ -1,0 +1,15 @@
+version,N_instances,C_concurrent_users,window_s,requests_after_warmup,requests_ok,requests_failed,http_statuses,client_errors,active_instances,throughput_req_per_s,client_median_ms,server_median_ms,little_prediction_ms
+avant : fixed1 (1 worker),1,1,39.7,817,817,0,200,,1,20.6,43.7,27.4,48.6
+avant : fixed1 (1 worker),1,2,39.6,914,914,0,200,,1,23.1,86.0,27.3,86.7
+avant : fixed1 (1 worker),1,4,39.7,938,938,0,200,,1,23.6,164.0,27.2,169.2
+avant : fixed1 (1 worker),1,8,39.4,916,916,0,200,,1,23.2,334.1,28.1,344.4
+avant : fixed1 (1 worker),1,16,39.2,919,919,0,200,,1,23.5,673.1,28.2,681.9
+avant : fixed1 (1 worker),1,32,38.5,841,841,0,200,,1,21.9,1340.8,27.7,1463.1
+avant : fixed1 (1 worker),1,64,37.2,849,849,0,200,,1,22.8,2830.0,28.6,2803.6
+après : workers1 (-w 4),1,1,39.7,1016,1016,0,200,,1,25.6,34.8,23.2,39.0
+après : workers1 (-w 4),1,2,39.7,1085,1085,0,200,,1,27.4,73.0,23.9,73.1
+après : workers1 (-w 4),1,4,39.6,1109,1109,0,200,,1,28.0,137.7,24.1,142.8
+après : workers1 (-w 4),1,8,39.4,1145,1145,0,200,,1,29.0,269.3,23.9,275.5
+après : workers1 (-w 4),1,16,39.2,1120,1120,0,200,,1,28.6,529.5,24.6,559.3
+après : workers1 (-w 4),1,32,38.4,1118,1118,0,200,,1,29.1,1049.4,24.0,1098.4
+après : workers1 (-w 4),1,64,37.2,1076,1076,0,200,,1,28.9,2193.3,24.4,2213.4

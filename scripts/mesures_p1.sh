@@ -4,11 +4,13 @@
 set -euo pipefail
 URL=$(gcloud app versions describe fixed1 --service default --format='value(versionUrl)')
 
+# TINY_PREFIX = jeu de données, TINY_USERS = nombre d'utilisateur, TINY_LOG = fichier CSV de sortie
 run() {
   TINY_PREFIX=$1 TINY_USERS=$2 TINY_LOG=raw/p1_$1.csv \
     locust -f bench/locustfile.py --headless -u 1 -r 1 -t 45s --only-summary --host "$URL"
 }
 
+# Exécution de la fonction avec différentes valeurs
 run base 1000
 run u100 100
 run u10000 10000

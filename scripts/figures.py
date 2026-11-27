@@ -1,15 +1,16 @@
+#!/usr/bin/env python3
 
-# --- Le code suivant été réalisé par Claude Opus 5.5 Moyen ---
+# --- Le code suivant été réalisé via Claude Opus 5.5 Moyen ---
 
-"""
-Génère les figures et leurs CSV à partir des journaux bruts de raw/.
+"""Génère les figures et leurs CSV à partir des journaux bruts de raw/.
 
 Usage (depuis la racine du dépôt) :
     python3 scripts/figures.py
 
-Entrées  : raw/p1_<préfixe>.csv  (produits par bench/locustfile.py)
-Sorties  : figures/fig1a.csv, figures/fig1a.png
-           figures/fig1b.csv, figures/fig1b.png
+Entrées  : raw/p1_<préfixe>.csv, raw/p2_N<N>_C<C>.csv  (produits par bench/locustfile.py)
+Sorties  : figures/fig1a.csv/.png, figures/fig1b.csv/.png  (partie 1)
+           figures/fig2a.csv/.png, figures/fig2b.csv/.png  (partie 2, pour les N disponibles)
+           figures/fig3.csv/.png  (partie 3 : fixed1 avant / workers1 après, si raw/p3_workers1_C<C>.csv existe)
 
 Choix de traitement :
   - on écarte les WARMUP_S premières secondes de chaque run (cold start, montée en charge) ;
@@ -33,7 +34,10 @@ P_SETS = {"p10": (100, 10, 20), "p100": (100, 100, 20), "p1000": (100, 1000, 20)
 F_SETS = {f"f{f:02d}": (120, 20, f) for f in range(5, 101, 5)}
 
 # Couleurs (palette catégorielle par défaut, ordre fixe)
-BLUE, ORANGE = "#2a78d6", "#eb6834"
+BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+N_COLORS = {1: BLUE, 2: ORANGE, 4: AQUA}
+P2_N = (1, 2, 4)
+P2_C = (1, 2, 4, 8, 16, 32, 64)
 INK, MUTED = "#2b2b2b", "#6b6b6b"
 
 
@@ -164,6 +168,189 @@ def fig1b(f_rows):
     plt.close(fig)
 
 
+# ---------------------------------------------------------------- partie 2
+
+def load_capacity(path):
+    """Débit et latence d'un run de la partie 2 (fenêtre après le warm-up)."""
+    with open(path, newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    t0 = min(float(r["T_START"]) for r in rows)
+    kept = [r for r in rows if float(r["T_START"]) >= t0 + WARMUP_S]
+    ok = [r for r in kept if r["STATUS"] == "200"]
+    t_end = max(float(r["T_START"]) for r in kept)
+    window = t_end - (t0 + WARMUP_S)
+    throughput = len(ok) / window
+    return {
+        "n_kept": len(kept),
+        "n_ok": len(ok),
+        "n_fail": len(kept) - len(ok),
+        "statuses": " ".join(sorted({r["STATUS"] for r in kept})),
+        "errors": " | ".join(sorted({r["ERROR"].split("(")[0] for r in kept if r["ERROR"]})),
+        "instances": len({r["INSTANCE"] for r in ok if r["INSTANCE"]}),
+        "window_s": window,
+        "throughput": throughput,
+        "client_ms": statistics.median(float(r["LATENCY_MS"]) for r in ok),
+        "server_ms": statistics.median(float(r["SERVER_MS"]) for r in ok),
+    }
+
+
+def capacity_table():
+    out = []
+    for n in P2_N:
+        for c in P2_C:
+            path = os.path.join(RAW, f"p2_N{n}_C{c}.csv")
+            if not os.path.exists(path):
+                continue
+            s = load_capacity(path)
+            s["little_ms"] = c / s["throughput"] * 1000
+            out.append({"N": n, "C": c, **s})
+    return out
+
+
+P2_COLUMNS = [
+    ("N_instances", "N"), ("C_concurrent_users", "C"), ("window_s", "window_s"),
+    ("requests_after_warmup", "n_kept"), ("requests_ok", "n_ok"),
+    ("requests_failed", "n_fail"), ("http_statuses", "statuses"),
+    ("client_errors", "errors"), ("active_instances", "instances"),
+    ("throughput_req_per_s", "throughput"), ("client_median_ms", "client_ms"),
+    ("server_median_ms", "server_ms"), ("little_prediction_ms", "little_ms"),
+]
+
+
+def write_p2_csv(path, rows):
+    with open(path, "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow([c[0] for c in P2_COLUMNS])
+        for r in rows:
+            w.writerow([f"{r[k]:.1f}" if isinstance(r[k], float) else r[k] for _, k in P2_COLUMNS])
+
+
+def c_axis(ax):
+    ax.set_xscale("log", base=2)
+    ax.minorticks_off()
+    ax.set_xticks(P2_C)
+    ax.set_xticklabels([str(c) for c in P2_C])
+    ax.set_xlabel("C (utilisateurs Locust simultanés, échelle log)", color=INK)
+
+
+def fig2(rows):
+    write_p2_csv(os.path.join(OUT, "fig2a.csv"), rows)
+    write_p2_csv(os.path.join(OUT, "fig2b.csv"), rows)
+    ns = [n for n in P2_N if any(r["N"] == n for r in rows)]
+
+    # Fig. 2a : débit selon C, une courbe par N
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    for n in ns:
+        rs = [r for r in rows if r["N"] == n]
+        ax.plot([r["C"] for r in rs], [r["throughput"] for r in rs], color=N_COLORS[n],
+                linewidth=2, marker="o", markersize=8, markeredgecolor="white",
+                markeredgewidth=2, label=f"N = {n} instance{'s' if n > 1 else ''}")
+    c_axis(ax)
+    ax.set_ylabel("Débit (requêtes réussies / s)", color=INK)
+    ax.set_ylim(bottom=0)
+    ax.legend(frameon=False, fontsize=9, loc="upper left")
+    ax.set_title("Fig. 2a : débit selon la concurrence C, une courbe par nombre d'instances N\n"
+                 "jeu base (U = 1000, P = 20, F = 20) ; versions fixedN", fontsize=11,
+                 color=INK, loc="left")
+    style(ax)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "fig2a.png"), dpi=150)
+    plt.close(fig)
+
+    # Fig. 2b : latence médiane mesurée et prédiction de Little, un panneau par N
+    fig, axes = plt.subplots(1, len(ns), figsize=(4.2 * len(ns), 4.2), sharey=True,
+                             squeeze=False)
+    for ax, n in zip(axes[0], ns):
+        rs = [r for r in rows if r["N"] == n]
+        cs = [r["C"] for r in rs]
+        ax.plot(cs, [r["client_ms"] for r in rs], color=N_COLORS[n], linewidth=2,
+                marker="o", markersize=8, markeredgecolor="white", markeredgewidth=2,
+                label="Latence médiane mesurée")
+        ax.plot(cs, [r["little_ms"] for r in rs], color=MUTED, linewidth=1.5,
+                linestyle="--", label="Little : C / débit")
+        c_axis(ax)
+        ax.set_xlabel("C (échelle log)", color=INK)
+        ax.set_yscale("log")
+        ax.set_title(f"N = {n}", fontsize=10, color=MUTED, loc="left")
+        style(ax)
+    axes[0][0].set_ylabel("Latence (ms, échelle log)", color=INK)
+    axes[0][0].legend(frameon=False, fontsize=9, loc="upper left")
+    fig.suptitle("Fig. 2b : latence médiane selon C, et prédiction de la loi de Little "
+                 "(latence ≈ C / débit)\njeu base ; versions fixedN", fontsize=11,
+                 color=INK, x=0.02, ha="left")
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "fig2b.png"), dpi=150)
+    plt.close(fig)
+
+    print(f"\n{'N':>2}{'C':>4}{'req.':>7}{'échecs':>8}{'inst.':>6}{'débit/s':>9}"
+          f"{'client':>9}{'Little':>9}{'serveur':>9}  erreurs")
+    for r in rows:
+        print(f"{r['N']:>2}{r['C']:>4}{r['n_ok']:>7}{r['n_fail']:>8}{r['instances']:>6}"
+              f"{r['throughput']:>9.1f}{r['client_ms']:>9.1f}{r['little_ms']:>9.1f}"
+              f"{r['server_ms']:>9.1f}  {r['errors']}")
+
+
+# ---------------------------------------------------------------- partie 3
+
+P3_VERSION = "workers1"
+
+
+def fig3():
+    """Avant (fixed1, 1 worker) / après (workers1, gunicorn -w 4), même protocole."""
+    rows = []
+    for label, pattern in (("avant : fixed1 (1 worker)", "p2_N1_C{c}.csv"),
+                           (f"après : {P3_VERSION} (-w 4)", f"p3_{P3_VERSION}_C{{c}}.csv")):
+        for c in P2_C:
+            path = os.path.join(RAW, pattern.format(c=c))
+            if not os.path.exists(path):
+                continue
+            s = load_capacity(path)
+            s["little_ms"] = c / s["throughput"] * 1000
+            rows.append({"version": label, "N": 1, "C": c, **s})
+    if not any(r["version"].startswith("après") for r in rows):
+        return None
+
+    with open(os.path.join(OUT, "fig3.csv"), "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["version"] + [c[0] for c in P2_COLUMNS])
+        for r in rows:
+            w.writerow([r["version"]] + [f"{r[k]:.1f}" if isinstance(r[k], float) else r[k]
+                                         for _, k in P2_COLUMNS])
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.3))
+    for label, color in (("avant", BLUE), ("après", ORANGE)):
+        rs = [r for r in rows if r["version"].startswith(label)]
+        name = rs[0]["version"]
+        cs = [r["C"] for r in rs]
+        for ax, key in ((axes[0], "throughput"), (axes[1], "client_ms")):
+            ax.plot(cs, [r[key] for r in rs], color=color, linewidth=2, marker="o",
+                    markersize=8, markeredgecolor="white", markeredgewidth=2, label=name)
+    axes[0].set_ylabel("Débit (requêtes réussies / s)", color=INK)
+    axes[0].set_ylim(bottom=0)
+    axes[0].set_title("Débit", fontsize=10, color=MUTED, loc="left")
+    axes[1].set_ylabel("Latence médiane (ms, échelle log)", color=INK)
+    axes[1].set_yscale("log")
+    axes[1].set_title("Latence médiane", fontsize=10, color=MUTED, loc="left")
+    for ax in axes:
+        c_axis(ax)
+        ax.set_xlabel("C (échelle log)", color=INK)
+        style(ax)
+    axes[1].legend(frameon=False, fontsize=9, loc="upper left")
+    fig.suptitle("Fig. 3 : avant / après la correction (gunicorn -w 4), même protocole que la partie 2\n"
+                 "1 instance B1, jeu base (U = 1000, P = 20, F = 20)", fontsize=11,
+                 color=INK, x=0.02, ha="left")
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "fig3.png"), dpi=150)
+    plt.close(fig)
+
+    print(f"\n{'version':<28}{'C':>4}{'req.':>7}{'échecs':>8}{'inst.':>6}{'débit/s':>9}"
+          f"{'client':>9}{'serveur':>9}  erreurs")
+    for r in rows:
+        print(f"{r['version']:<28}{r['C']:>4}{r['n_ok']:>7}{r['n_fail']:>8}{r['instances']:>6}"
+              f"{r['throughput']:>9.1f}{r['client_ms']:>9.1f}{r['server_ms']:>9.1f}  {r['errors']}")
+    return rows
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     u_rows, p_rows, f_rows = table(U_SETS), table(P_SETS), table(F_SETS)
@@ -176,6 +363,10 @@ def main():
         print(f"{r['prefix']:<8}{r['U']:>6}{r['P']:>6}{r['F']:>5}{r['n_ok']:>7}"
               f"{r['n_fail']:>8}{r['instances']:>6}{r['server_ms']:>10.1f}"
               f"{r['client_ms']:>9.1f}{r['network_ms']:>9.1f}")
+    p2 = capacity_table()
+    if p2:
+        fig2(p2)
+    fig3()
     print(f"\nFigures écrites dans {OUT}/ (premières {WARMUP_S:.0f} s de chaque run écartées)")
 
 

@@ -1,0 +1,7 @@
+factor_varied,dataset,U_users,P_posts_per_user,F_followees,requests_total,requests_after_warmup,requests_ok,requests_failed,http_statuses,active_instances,server_median_ms,client_median_ms,network_median_ms
+U,u100,100,20,20,1016,901,901,0,200,1,26.2,40.2,13.6
+U,base,1000,20,20,960,851,851,0,200,1,28.1,41.8,13.3
+U,u10000,10000,20,20,1013,905,905,0,200,1,27.0,40.1,12.6
+P,p10,100,10,20,1022,902,902,0,200,1,26.4,39.6,12.9
+P,p100,100,100,20,1023,905,905,0,200,1,27.0,40.5,13.4
+P,p1000,100,1000,20,991,879,879,0,200,1,28.5,41.4,12.6
